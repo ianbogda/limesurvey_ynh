@@ -1,0 +1,71 @@
+#!/bin/bash
+# This restore script is adapted to Yunohost >=2.4
+APP=${!#}
+
+# The parameter $1 is the backup directory location dedicated to the app
+backup_dir=$1
+
+# Get old parameter of the app
+domain=$(sudo yunohost app setting $APP domain)
+path=$(sudo yunohost app setting $APP path)
+admin=$(sudo yunohost app setting $APP admin)
+
+# Check if restore operation is possible
+sudo yunohost app checkurl $domain$path -a $APP
+if [[ ! $? -eq 0 ]]; then
+    echo "There is already an app on this URL : $domain$path" | sudo tee /dev/stderr
+    exit 1
+fi
+
+conf=/etc/nginx/conf.d/$domain.d/$APP.conf
+if [ -f $conf ]; then
+    echo "There is already a nginx conf file at this path: $conf " | sudo tee /dev/stderr
+    exit 1
+fi
+
+final_path=/var/www/$APP
+if [ -d $final_path ]; then
+    echo "There is already a directory: $final_path " | sudo tee /dev/stderr
+    exit 1
+fi
+
+upload_path=/home/yunohost.app/$APP/upload
+
+# Restore sources & data
+sudo cp -a "${backup_dir}/var/www/$APP" $final_path
+sudo cp -a "${backup_dir}/home/yunohost.app/$APP" /home/yunohost.app/$APP
+
+
+db_pwd=$(sudo yunohost app setting $APP mysqlpwd)
+db_user=$APP
+sudo yunohost app initdb $db_user -p $db_pwd
+sudo su -c "mysql -u $db_user -p$db_pwd $APP < ${backup_dir}/db.sql"
+sudo rm -f "${backup_dir}/db.sql"
+#TODO change config to be able to change database name during restore operation
+
+
+# Set permissions
+sudo chown -R www-data:www-data $final_path
+sudo chown -R www-data:www-data $upload_path
+sudo chmod -R 664 $final_path
+sudo find $final_path -type d -print0 | xargs -0 sudo chmod 775 \
+	|| echo "No file to modify"
+sudo chmod -R 664 $upload_path
+sudo find $upload_path -type d -print0 | xargs -0 sudo chmod 775 \
+	|| echo "No file to modify"
+sudo chmod u+w $final_path/tmp
+sudo chmod u+w $upload_path
+sudo chmod u+w $final_path/application/config/
+
+sudo yunohost app addaccess $APP -u $admin
+
+
+# Restore conf files
+sudo cp -a "${backup_dir}/conf/nginx.conf" $conf
+
+# Reload Nginx
+sudo service nginx reload
+
+# Set ssowat config
+sudo yunohost app setting $APP skipped_uris -v "/"
+sudo yunohost app ssowatconf

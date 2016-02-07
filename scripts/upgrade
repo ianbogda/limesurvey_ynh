@@ -1,19 +1,19 @@
 #!/bin/bash
 
-app="limesurvey"
+APP=${!#}
 
-domain=$(sudo yunohost app setting $app domain)
-path=$(sudo yunohost app setting $app path)
-admin=$(sudo yunohost app setting $app admin)
-db_pwd=$(sudo yunohost app setting $app mysqlpwd)
+domain=$(sudo yunohost app setting $APP domain)
+path=$(sudo yunohost app setting $APP path)
+admin=$(sudo yunohost app setting $APP admin)
+db_pwd=$(sudo yunohost app setting $APP mysqlpwd)
 
-db_user=$app
+db_user=$APP
 
 # Remove trailing "/" for next commands
 path=${path%/}
 
-final_path=/var/www/$app
-upload_path=/home/yunohost.app/$app/upload
+final_path=/var/www/$APP
+upload_path=/home/yunohost.app/$APP/upload
 sudo mkdir -p $final_path
 sudo mkdir -p $upload_path
 
@@ -77,5 +77,3 @@ sudo find $upload_path -type d -print0 | xargs -0 sudo chmod 775 \
 sudo chmod u+w $final_path/tmp
 sudo chmod u+w $upload_path
 sudo chmod u+w $final_path/application/config/
-
-
