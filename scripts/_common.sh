@@ -320,7 +320,7 @@ ynh_app_dependencies  (){
     cat > ../conf/app-ynh-deps.control.j2 << EOF
 Section: misc
 Priority: optional
-Homepage: {{ project_url }}
+Homepage: {{ project_url }}
 Standards-Version: 3.9.2
 
 Package: {{ dep_app }}-ynh-deps
